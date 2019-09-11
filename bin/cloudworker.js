@@ -59,6 +59,26 @@ function run (file, wasmBindings) {
   let reloading = false
 
   if (program.watch) {
+    if (program.kvFile) {
+      const components = program.kvFile[0].split('=')
+      const fullKVPath = path.resolve(process.cwd(), components[1])
+      fs.watchFile(fullKVPath, () => {
+        if (reloading) {
+          return
+        }
+        reloading = true
+        console.log('Changes to the kv json detected - reloading...')
+
+        server.close(() => {
+          if (stopping) return
+
+          reloading = false
+          console.log('Successfully reloaded!')
+          opts.bindings = utils.extractKVBindings(program.kvSet.concat(program.set), program.kvFile)
+          server = new Cloudworker(utils.read(fullpath), opts).listen(program.port)
+        })
+      })
+    }
     fs.watchFile(fullpath, () => {
       if (reloading) {
         return
